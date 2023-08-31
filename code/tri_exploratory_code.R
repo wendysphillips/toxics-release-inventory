@@ -1,4 +1,5 @@
 library(tidyverse)
+library(janitor)
 
 tri <- read.csv('data/tri_2022_us.csv', sep = ",", check.names = FALSE)
 
@@ -25,7 +26,7 @@ tri_sub %>% select(where(is.numeric)) %>%
   glimpse()
 
 # Clean up colnames a bit
-tri_sub2 <- tri_sub |> clean_names()
+tri_sub2 <- tri_sub |> janitor::clean_names()
 colnames(tri_sub2)
 colnames(tri_sub2) <- sub(".*?_", "", colnames(tri_sub2))
 
