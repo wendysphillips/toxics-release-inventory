@@ -17,7 +17,7 @@ for (i in char_cols){
 str(tri)
 
 # Subset to columns of interest
-tri_sub <- tri[,c(2,6,7,8,9,11,12,13,18,19,20,34,35,39:47,62,85,91,94,101,103,104:117)]
+tri_sub <- tri[,c(2,6,7,8,9,11,12,13,18,19,20,34,35,36,39:47,62,85,91,94,101,103,104:117)]
 str(tri_sub)
 
 # Peek at data
@@ -32,6 +32,16 @@ tri_sub2 <- tri_sub |> janitor::clean_names()
 colnames(tri_sub2)
 colnames(tri_sub2) <- sub(".*?_", "", colnames(tri_sub2))
 str(tri_sub2)
+
+# How many chemicals? ------
+length(unique(tri_sub2$chemical))
+length(unique(tri_sub2$tri_chemical_compound_id))
+table(tri_sub2$classification)
+table(tri_sub2$form_type)
+
+chem_counts <- tri_sub2 |>
+  group_by(chemical) |>
+  count(sort = TRUE)
 
 # Industry sectors ----
 industry_sectors <- tri_sub2 |> group_by(industry_sector) |> count(sort = TRUE)
@@ -98,6 +108,8 @@ table(tri_sub2$unit_of_measure)
 # Subset to entries in pounds
 in_pounds <- tri_sub2[tri_sub2$unit_of_measure == "Pounds",]
 
+table(in_pounds$classification)
+
 # Dioxins ----
 # Subset to just entries in grams
 in_grams <- tri_sub2[tri_sub2$unit_of_measure == "Grams",]
@@ -150,3 +162,46 @@ ggplot(per_state_metal, aes(y = st, x = tot_releases)) +
   theme_classic() +
   scale_x_log10(expand = c(0,0)) +
   labs(x = "Total releases (pounds)", y = "State/Territory", title = "Metal")
+
+# Industry sectors pounds -----
+industry_sectors <- in_pounds |> group_by(industry_sector) |> count(sort = TRUE)
+industry_sectors$industry_sector <- factor(industry_sectors$industry_sector, levels = industry_sectors$industry_sector)
+
+ggplot(industry_sectors, aes(y = industry_sector, x = n)) +
+  geom_bar(stat = 'identity', fill = 'skyblue', color = 'white') +
+  theme_classic() +
+  scale_x_continuous(expand = c(0,0)) +
+  labs(x = "Number of entries", y = "Industry sector", title = "All")
+
+industry_sectors_totals <- in_pounds |> 
+  group_by(industry_sector) |> 
+  summarize(total_releases = sum(total_releases)) |>
+  dplyr::arrange(desc(total_releases))
+
+industry_sectors_totals$industry_sector <- factor(industry_sectors_totals$industry_sector, levels = industry_sectors_totals$industry_sector)
+
+ggplot(industry_sectors_totals[industry_sectors_totals$total_releases > 1,], aes(y = industry_sector, x = total_releases)) +
+  geom_bar(stat = 'identity', fill = 'blue', color = 'white', alpha = 0.5) +
+  theme_classic() +
+  theme(panel.grid.major.x = element_line(),
+        panel.grid.minor.x = element_line()) +
+  scale_x_log10(expand = c(0,0), breaks = c(1, 1e1,1e2, 1e3, 1e4, 1e5, 1e6, 1e7, 1e8, 1e9)) +
+  labs(x = "Total releases (pounds)", y = "Industry sector", title = "All")
+
+ggplot(in_pounds[in_pounds$total_releases > 1,], aes(y = industry_sector, x = total_releases)) +
+  geom_boxplot(outlier.shape = NA) +
+  geom_jitter(width = 0, height = 0.2, size =1 , alpha = 0.2) +
+  theme_bw() +
+  scale_x_log10() +
+  theme(panel.grid.major.y = element_blank())
+ 
+# Totals by chemical ----
+pounds_by_chem <- in_pounds |>
+  group_by(chemical) |>
+  summarize(total_releases = sum(total_releases)) |>
+  dplyr::arrange(desc(total_releases))
+
+pounds_by_ind_chem <- in_pounds |>
+  group_by(industry_sector, chemical) |>
+  summarize(total_releases = sum(total_releases)) |>
+  dplyr::arrange(desc(total_releases))
